@@ -1,0 +1,329 @@
+#|
+
+
+|#
+
+;;;;;
+;Variables
+;;;;;
+
+;You can change these
+
+(define ball-color *color-red*)
+
+(define ball-size (meters 0.75))
+
+(define interval (seconds 0.1))
+
+(define max-time (seconds 120.0))
+
+
+;;;;;
+;ideally not these
+
+(define y-adj (meters 1.0))
+(define start-tick (-> *display* base-frame-counter))
+(define max-tick (-> *display* base-frame-counter)) ;tick used to check max time
+(define ghost-on? #f)
+(define vec-ret (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 0.0))
+
+;;;;;
+;Ghost-maker
+;;;;;
+
+(defun translate-pos ((vec vector))
+;get coords from (target-pos 0) and adjust them
+;can probably use w for something useful later
+    (set! (-> vec-ret x) (-> vec x))
+    (set! (-> vec-ret y) (-> vec y))
+    (set! (-> vec-ret z) (-> vec z))
+    (set! (-> vec-ret w) 0.0) ;w hardcoded
+    
+    (+! (-> vec-ret y) y-adj)
+    vec-ret
+)
+
+(defun format-vec ((vec vector))
+;take vector, turn into string in (0.0 0.0 0.0 0.0) format
+    (let ((vecstr (new 'global 'string 256 (the string #f))))
+        (format vecstr "(~f ~f ~f 0.0)" (-> vec x) (-> vec y) (-> vec z) (-> vec w))
+        vecstr
+    )
+)
+
+(defun gmaker-1 ()
+  "Pos is stored in the file"
+  (let ((gmaker-proc
+    (process-spawn-function process :name 'gmaker-proc
+      (lambda :behavior process ()
+      (stack-size-set! (-> self main-thread) 128)
+      ;Code before the loop runs once on process spawn
+      
+      (set! ghost-on? #t)
+
+      (vector-copy! vec-ret (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))
+      
+      (set! start-tick (-> *display* base-frame-counter))
+      (set! max-tick (-> *display* base-frame-counter))
+
+      ;build string and open file for streaming
+      (format (clear *pc-temp-string-1*) "~S/ghost.gc" *pc-settings-folder*)
+      (let ((file (new 'stack 'file-stream *pc-temp-string-1* 'append))) ;append might just write
+        (when (not (file-stream-valid? file))
+            (return #f)
+        )
+
+        ;Loop runs once per frame while process is active
+        (loop
+
+          (when (!= (-> vec-ret w) 1.0) ; hopefully this only happens for the null-vector
+          (when (>= (-> *display* base-frame-counter) (+ start-tick interval))
+            (set! start-tick (-> *display* base-frame-counter))
+            
+            (format file (format-vec (translate-pos (target-pos 0))))
+          )
+          )
+          ;if bad, then kill and close file
+          (when (or (= (-> vec-ret w) 1.0) 
+                    (>= (-> *display* base-frame-counter) (+ max-tick max-time))) ;check max time
+            (format #t "gm died, closing file")
+            (file-stream-close file)
+            (set! ghost-on? #f)
+            (kill-by-name 'gmaker-proc *active-pool*)
+          )
+          
+
+        (suspend)
+        );end loop
+      );end file let
+      )
+    )
+    ))
+    (none)
+    )
+)
+
+(defun gmaker-kill ()
+  "Sets w to 0 which turns off the gmaker process"
+    (set! (-> vec-ret w) 1.0)
+    (set! ghost-on? #f)
+)
+
+;;;;;
+;Ghost-player
+;;;;;
+
+(defun parse-vec ((file file-stream))
+  ;parses the filestream you give it, one vector at a time
+  ;returns the vector, or *null-vector* on error
+  ;expects this form: (0.0 0.0 0.0 0.0)
+  (let ((tvec (new 'static 'vector)))
+    
+    (when (not (file-stream-valid? file))
+        (format #t "invalid file stream")
+        (return *null-vector*) ;used to return #f but that breaks vector-copy
+    )
+    
+    (file-stream-seek-past-whitespace file)
+
+    (when (!= #x28 (file-stream-getc file))
+        (format #t "invalid char, ( not found")
+        (return *null-vector*)
+    )
+  
+    (set! (-> tvec x) (file-stream-read-float file))
+    (set! (-> tvec y) (file-stream-read-float file))
+    (set! (-> tvec z) (file-stream-read-float file))
+    (set! (-> tvec w) (file-stream-read-float file))
+
+    (when (!= #x29 (file-stream-getc file))
+        (format #t "invalid char, ) not found")
+        (return *null-vector*)
+    )
+    (file-stream-seek-past-whitespace file)
+    
+    tvec 
+  )
+)
+
+(defun gplayer-1 ()
+  "Pos is stored in the balls"
+  (let ((gplayer-proc
+    (process-spawn-function process :name 'gplayer-proc
+      (lambda :behavior process ()
+      (stack-size-set! (-> self main-thread) 128)
+      ;Code before the loop runs once on process spawn
+      
+      (set! ghost-on? #t)
+
+      (vector-copy! vec-ret (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))
+
+      (define start-tick (-> *display* base-frame-counter))
+      (define interval (seconds .25))
+
+      ;build string and open file for streaming
+      (format (clear *pc-temp-string-1*) "~S/ghost.gc" *pc-settings-folder*)
+      (let ((file (new 'stack 'file-stream *pc-temp-string-1* 'read)))
+        (when (not (file-stream-valid? file))
+            (return #f)
+        )
+        ;Loop runs once per frame while process is active
+        (loop
+
+          (when (!= (-> vec-ret w) 1.0) ; hopefully this is only w=1 for the null-vector
+          (when (>= (-> *display* base-frame-counter) (+ start-tick interval))
+            (set! start-tick (-> *display* base-frame-counter))
+            (vector-copy! vec-ret (parse-vec file))
+          )
+          )
+          ;if bad, then close and kill
+          (when (= (-> vec-ret w) 1.0)
+            (format #t "GP died, closing file")
+            (file-stream-close file)
+            (set! ghost-on? #f)
+            (kill-by-name 'gplayer-proc *active-pool*)
+          )
+
+          (add-debug-sphere #t (bucket-id debug) vec-ret ball-size ball-color)
+
+        (suspend)
+        );end loop
+      );end file let
+      )
+    )
+    ))
+    (none)
+    )
+)
+
+(defun gplayer-kill ()
+  "Sets w to 0, which turns off the gplayer process"
+  (set! (-> vec-ret w) 1.0)
+  (set! ghost-on? #f)
+)
+
+;;;;;
+;Menu
+;;;;;
+
+(defun-debug gmenu-1 ()
+  ""
+    (let ((gmenu-proc
+      ;process-spawn-function, spawns a process that runs the function you give it
+      (process-spawn-function process :name 'gmenu-proc
+        ;This lambda is our function
+        (lambda :behavior process ()
+        (stack-size-set! (-> self main-thread) 64)
+        ;Code before the loop runs once on process spawn
+        
+        (define page 0) ;menu's page index
+        
+        (define col-int 8) ;int for menu's font color
+
+        (define page-size 5) ;number of pages used to mod
+
+        (define y-coord 180)
+
+        (define rec-str "")
+        (define ply-str "")
+
+
+          ;Loop runs once per frame while process is active
+          (loop
+            (when (not ghost-on?) ;disable menu l/r when ghost on
+                (when (cpad-pressed? 0 right)
+                    (set! page (mod (+ page 1) page-size))
+                )
+                (when (cpad-pressed? 0 left)
+                    (set! page (mod (+ (- page 1) page-size) page-size))
+                )
+            )
+            ;Start a bucket thing block
+            (with-dma-buffer-add-bucket ((testbuf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
+              ;(draw-string-xy (string-format "menu l/r ~d, menu u/d ~d" page col-int) testbuf 10 50 (font-color green) (font-flags shadow kerning))
+              (when (= page 0)
+                (draw-string-xy (string-format "OpenGhosts") testbuf 10 y-coord (the font-color 2) (font-flags shadow kerning))
+                (draw-string-xy (string-format "Dpad left/right to change page") testbuf 10 (+ y-coord 8) (the font-color col-int) (font-flags shadow kerning))
+                (draw-string-xy (string-format "Up = On, Down = Off") testbuf 10 (+ y-coord 16) (the font-color col-int) (font-flags shadow kerning))
+                (when (cpad-pressed? 0 up)
+                    (format *stdcon* "up")
+                )
+                (when (cpad-pressed? 0 down)
+                  (format *stdcon* "down")
+                )
+              )
+
+              (when (= page 1)
+                (draw-string-xy (string-format "Ghost Player") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                ;(draw-string-xy (string-format "~s" ply-str) testbuf 10 (+ y-coord 10) (the font-color col-int) (font-flags shadow kerning))
+                (if ghost-on? (draw-string-xy (string-format "Playing") testbuf 10 (+ y-coord 10) (the font-color col-int) (font-flags shadow kerning)))
+                (when (cpad-pressed? 0 up)
+                    (format *stdcon* "up")
+                    (set! ply-str "Playing")
+                    (gplayer-1)
+                )
+                (when (cpad-pressed? 0 down)
+                    (format *stdcon* "down")
+                    (set! ply-str "")
+                    (gplayer-kill)
+                )
+              )
+
+              (when (= page 2)
+                (draw-string-xy (string-format "Ghost Maker") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (draw-string-xy (string-format "~s" rec-str) testbuf 10 (+ y-coord 10) (font-color red) (font-flags shadow kerning large))
+                (when (cpad-pressed? 0 up)
+                    (format *stdcon* "up")
+                    (set! rec-str "RECORDING")
+                    (gmaker-1)
+                )
+                (when (cpad-pressed? 0 down)
+                    (format *stdcon* "down")
+                    (set! rec-str "")
+                    (gmaker-kill)
+                )
+              )
+
+              (when (= page 3)
+                (draw-string-xy (string-format "Change font color") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (when (cpad-pressed? 0 up)
+                    (format *stdcon* "up")
+                    (+! col-int 1)
+                )
+                (when (cpad-pressed? 0 down)
+                  (format *stdcon* "down")
+                  (-! col-int 1)
+                )
+              )
+
+              (when (= page 4)
+                (draw-string-xy (string-format "Move up/down") testbuf 10 y-coord (the font-color col-int) (font-flags shadow kerning))
+                (when (cpad-pressed? 0 up)
+                    (format *stdcon* "up")
+                    (-! y-coord 5)
+                )
+                (when (cpad-pressed? 0 down)
+                  (format *stdcon* "down")
+                  (+! y-coord 5)
+                )
+              )
+            )
+            ;;Processes should suspend themselves, the loop will resume next frame
+            (suspend)
+          )
+        )
+      )
+      ))
+      (none)
+      )
+  )
+
+(defun-debug gmenu-kill ()
+  "Kill the gmenu process"
+  (kill-by-name 'gmenu-proc *active-pool*)
+  )
+
+
+#|
+
+|#

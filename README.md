@@ -1,9 +1,12 @@
-# OpenGoal-Mod-Base
-Serves as a base template for openGOAL mods that will be supported via [opengoal-mod-launcher](https://github.com/OpenGOAL-Unofficial-Mods/opengoal-mod-launcher).
+# OpenGhosts
 
-- Please ensure you are not committing copyrighted material to your repo (the `.gitignore` should help prevent this). 
-- Generally speaking you should only be updating certain directories/files:
-  - the executable binaries (`goalc.exe`, `gk.exe`, `extractor.exe`)
-  - GOAL code (`/data/goal_src`)
-  - Assets specific to the PC Port (`/data/game/assets/jak1/`)
-  - Decompiler config (`/data/decompiler/config`)
+Record and playback Jak's position. Saves to a file so you can share with your friends!
+
+If the mod doesn't start automatically, run:
+(gmenu-1)
+
+Ghosts are saved to:
+%AppData%\OpenGOAL\jak1\settings\ghost.gc
+
+The mod file is here:
+goal_src\jak1\pc\util\openghosts.gc
