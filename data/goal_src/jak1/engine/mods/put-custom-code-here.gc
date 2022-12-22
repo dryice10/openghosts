@@ -30,7 +30,7 @@
     (defun runs-on-orb-pickup ((parent process-tree))
       (let* ((from-cache? (and parent (type-type? (-> parent type) orb-cache-top))))
         ;; Code here runs on ANY orb pickup
-
+	
 
         (when from-cache?
           ;; Code here runs only if the orb was from an orb cache
@@ -102,8 +102,15 @@
       (none)
       )
 
+	(define mod-on? #f)
     (defun runs-on-jak-spawn ()
       ;; Code here runs every time jak spawns (loading a file new game or death)   
+	
+	(when (= mod-on? #f) 
+	   (gmenu-1)
+	   (set! mod-on? #t)
+	)
+
 
       (none)
       )

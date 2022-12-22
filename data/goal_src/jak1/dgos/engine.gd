@@ -303,5 +303,6 @@
   ("anim-tester-x.o" "anim-tester-x") ;; added
   ("default-menu.o" "default-menu")
   ("subtitle.o" "subtitle") ;; added
+  ("openghosts.o" "openghosts") ;; this mod
   )
 

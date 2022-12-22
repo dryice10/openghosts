@@ -2049,6 +2049,9 @@
 (goal-src "pc/util/anim-tester-x.gc" "pckernel" "gstring" "joint" "process-drawable" "art-h" "effect-control")
 (goal-src "pc/hud-classes-pc.gc" "pckernel" "hud" "battlecontroller" "generic-obs")
 
+;;This Mod
+(goal-src "engine/mods/openghosts.gc")
+
 (goal-src-sequence
  ;; prefix
  "engine/"

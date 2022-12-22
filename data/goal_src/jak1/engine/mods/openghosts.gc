@@ -17,11 +17,11 @@
 
 (define max-time (seconds 120.0))
 
+(define y-adj (meters 1.25))
 
 ;;;;;
 ;ideally not these
 
-(define y-adj (meters 1.0))
 (define start-tick (-> *display* base-frame-counter))
 (define max-tick (-> *display* base-frame-counter)) ;tick used to check max time
 (define ghost-on? #f)

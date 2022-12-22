@@ -358,6 +358,7 @@
   ("target-flut.o" "target-flut")
   ("flut-saddle-ag.go" "flut-saddle")
   ("eichar-flut+0-ag.go" "eichar-flut+0")
-
+  ;;this mod
+  ("openghosts.o" "openghosts")
   )
   
