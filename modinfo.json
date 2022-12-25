@@ -1,0 +1,10 @@
+{
+  "Mod Info": [
+    {
+      "name": "OpenGhosts",
+      "Contributors": "Yopie",
+      "Desctription": "Record and playback Jak's position. Saves to a file so you can share with your friends! Needs Alt->Debug Mode",
+      "URL": "https://github.com/dryice10/openghosts"
+    }
+  ]
+}
