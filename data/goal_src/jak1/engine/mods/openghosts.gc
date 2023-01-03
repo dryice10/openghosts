@@ -25,7 +25,7 @@ HutToPelican.gc is a ghost file, you can rename it and put it in the right folde
 
 (define ball-color *color-red*)
 
-(define ball-text (new 'global 'string 256 (the string #f)))
+(define ball-text "") 
 
 (define y-coord 180)
 
@@ -222,7 +222,7 @@ HutToPelican.gc is a ghost file, you can rename it and put it in the right folde
             (return #f)
         )
         (copy-string<-string ball-text (parse-str file))
-        (inspect ball-text)
+
         ;Loop runs once per frame while process is active
         (loop
 
@@ -243,7 +243,6 @@ HutToPelican.gc is a ghost file, you can rename it and put it in the right folde
           
           (unless (or (= (-> vec-ret w) 1.0) (= (-> vec-ret y) 0.0))
           (add-debug-text-3d #t (bucket-id debug) ball-text vec-ret (the font-color col-int) (the vector2h #f))
-          (inspect ball-text)
           )
 
         (suspend)

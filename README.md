@@ -13,4 +13,4 @@ Ghosts are saved to:
 The mod file is here:
 goal_src\jak1\engine\mods\openghosts.gc
 
-HutToPelican.gc is a ghost file, you can rename it and put it in the right folder to race against it.
+The Ghosts folder contains example ghosts, you can rename one and put it in the right folder to race against it.
